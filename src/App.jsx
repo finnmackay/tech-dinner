@@ -3,9 +3,18 @@ import { useMemo, useState } from 'react'
 const ROLES = ['Founder', 'Engineer', 'Designer', 'Investor', 'PM', 'Researcher']
 const GOALS = ['Hiring', 'Co-founder', 'Just vibes', 'Learning', 'Selling']
 const SENIORITY = ['0-2 yrs', '3-5 yrs', '6-10 yrs', '10+ yrs']
+const VIBES = ['Deep in a side project', 'Out with friends', 'At a talk or meetup', 'Honestly, still working']
 const CITIES = ['San Francisco', 'New York', 'London', 'Berlin', 'Remote / flexible']
+const NIGHTS = ['This Thursday', 'Next week', 'Just exploring for now']
 
-const STEPS = ['role', 'building', 'goal', 'seniority', 'city']
+const VIBE_PHRASES = {
+  'Deep in a side project': 'deep in their own side projects right now too',
+  'Out with friends': 'always up for getting out with friends too',
+  'At a talk or meetup': 'the type to show up for a good talk or meetup too',
+  'Honestly, still working': 'probably still working right now too',
+}
+
+const STEPS = ['role', 'goal', 'building', 'seniority', 'vibe', 'city', 'night']
 
 function ChipGroup({ options, value, onSelect }) {
   return (
@@ -29,6 +38,7 @@ function ChipGroup({ options, value, onSelect }) {
 }
 
 function QuestionFlow({ answers, setAnswer, step, setStep, onComplete }) {
+  const [showEcho, setShowEcho] = useState(false)
   const current = STEPS[step]
   const isLast = step === STEPS.length - 1
 
@@ -39,14 +49,20 @@ function QuestionFlow({ answers, setAnswer, step, setStep, onComplete }) {
 
   const titles = {
     role: 'What do you do?',
-    building: "What are you building or working on?",
     goal: 'What do you want out of the dinner?',
+    building: "What are you building or working on?",
     seniority: 'How many years have you been in tech?',
+    vibe: 'How do you like to spend a free evening?',
     city: 'Where are you based?',
+    night: 'Which night works?',
   }
 
   function handleNext() {
     if (!canAdvance) return
+    if (current === 'building') {
+      setShowEcho(true)
+      return
+    }
     if (isLast) {
       onComplete()
     } else {
@@ -54,17 +70,41 @@ function QuestionFlow({ answers, setAnswer, step, setStep, onComplete }) {
     }
   }
 
+  function handleEchoContinue() {
+    setShowEcho(false)
+    setStep(step + 1)
+  }
+
+  if (showEcho) {
+    return (
+      <div id="questions" className="mx-auto max-w-xl px-6 py-24 text-center">
+        <p className="font-display text-2xl text-cream">
+          Got it — pairing you with people who'd actually want to talk about{' '}
+          <span className="text-ember">{answers.building}</span>.
+        </p>
+        <button
+          type="button"
+          onClick={handleEchoContinue}
+          className="mt-10 rounded-full bg-ember px-8 py-3 text-sm font-semibold text-ink transition-transform hover:scale-105"
+        >
+          Continue
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div id="questions" className="mx-auto max-w-xl px-6 py-24">
-      <div className="mb-10 flex justify-center gap-2">
-        {STEPS.map((s, i) => (
-          <span
-            key={s}
-            className={`h-2 w-2 rounded-full transition-colors ${
-              i === step ? 'bg-ember' : i < step ? 'bg-ember-dim' : 'bg-line'
-            }`}
+      <div className="mb-10">
+        <div className="mb-2 flex justify-center text-xs font-medium uppercase tracking-widest text-cream-dim">
+          Step {step + 1} of {STEPS.length}
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
+          <div
+            className="h-full rounded-full bg-ember transition-all duration-300"
+            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
           />
-        ))}
+        </div>
       </div>
 
       <h2 className="mb-8 text-center font-display text-3xl text-cream">
@@ -82,7 +122,7 @@ function QuestionFlow({ answers, setAnswer, step, setStep, onComplete }) {
         />
       ) : (
         <ChipGroup
-          options={{ role: ROLES, goal: GOALS, seniority: SENIORITY, city: CITIES }[current]}
+          options={{ role: ROLES, goal: GOALS, seniority: SENIORITY, vibe: VIBES, city: CITIES, night: NIGHTS }[current]}
           value={answers[current]}
           onSelect={(v) => setAnswer(current, v)}
         />
@@ -124,6 +164,7 @@ function Matching() {
         ))}
       </div>
       <p className="mt-6 text-cream-dim">Finding your table...</p>
+      <p className="mt-3 text-sm text-ember-soft">14 tech people matched into dinners this week</p>
     </div>
   )
 }
@@ -132,6 +173,8 @@ function ResultCard({ answers }) {
   const [email, setEmail] = useState('')
   const [reserved, setReserved] = useState(false)
   const city = answers.city === 'Remote / flexible' ? 'your city' : answers.city
+  const night = answers.night === 'Just exploring for now' ? 'soon' : answers.night.toLowerCase()
+  const vibePhrase = VIBE_PHRASES[answers.vibe]
 
   function handleReserve(e) {
     e.preventDefault()
@@ -146,10 +189,10 @@ function ResultCard({ answers }) {
           Your table is set
         </p>
         <h2 className="mt-4 font-display text-3xl text-cream">
-          You're paired with 3 other {answers.role.toLowerCase()}s this Thursday in {city}.
+          You're paired with 3 other {answers.role.toLowerCase()}s {night} in {city}.
         </h2>
         <p className="mt-3 text-cream-dim">
-          Matched on what you're building, what you want out of it, and where you want to be.
+          All {vibePhrase} — and curious to hear more about {answers.building}.
         </p>
 
         {reserved ? (
@@ -225,10 +268,12 @@ function App() {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState({
     role: '',
-    building: '',
     goal: '',
+    building: '',
     seniority: '',
+    vibe: '',
     city: '',
+    night: '',
   })
 
   function setAnswer(key, value) {
